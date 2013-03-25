@@ -86,48 +86,48 @@ class SiriProxy::Plugin::LWRF < SiriProxy::Plugin
   def match_device
     @debug and (puts "[Info - Lwrf] match_device: Executing... ")
     #loop the devices phrase in the config looking for a match
-      config['phrases']['device'].each do |phrase|
-        @debug and (puts "[Info - Lwrf] match_device: Phrase is: #{phrase['match']} ")
-        regex = "/" + phrase['match'] + "/i"
-        @debug and (puts "[Info - Lwrf] match_device: Checking regex: #{regex} ")
-        #look for a match
-        listen_for regex do | action, device, room |
-          response = translate(room, device, nil)
-          @debug and (puts "[Info - Lwrf] match_device: Matched! Sending command")
-          send_lwrf_command('device', response['room'], response['device'], action)
-        end
+    config['phrases']['device'].each do |phrase|
+      @debug and (puts "[Info - Lwrf] match_device: Phrase is: #{phrase['match']} ")
+      regex = "/" + phrase['match'] + "/i"
+      @debug and (puts "[Info - Lwrf] match_device: Checking regex: #{regex} ")
+      #look for a match
+      listen_for regex do | action, device, room |
+        response = translate(room, device, nil)
+        @debug and (puts "[Info - Lwrf] match_device: Matched! Sending command")
+        send_lwrf_command('device', response['room'], response['device'], action)
       end
+    end
   end
 
   def match_mood
     @debug and (puts "[Info - Lwrf] match_mood: Executing... ")
     #loop the mood phrase in the config looking for a match
-      config['phrases']['mood'].each do |phrase|
-        @debug and (puts "[Info - Lwrf] match_mood: Phrase is: #{phrase['match']} ")
-        regex = "/" + phrase['match'] + "/i"
-        @debug and (puts "[Info - Lwrf] match_mood: Checking regex: #{regex} ")
-        #look for a match
-        listen_for regex do | room, mood |
-          response = translate(room, nil, mood)
-          @debug and (puts "[Info - Lwrf] match_device: Matched! Sending command")
-          send_lwrf_command('mood', response['room'], response['mood'])
-        end
+    config['phrases']['mood'].each do |phrase|
+      @debug and (puts "[Info - Lwrf] match_mood: Phrase is: #{phrase['match']} ")
+      regex = "/" + phrase['match'] + "/i"
+      @debug and (puts "[Info - Lwrf] match_mood: Checking regex: #{regex} ")
+      #look for a match
+      listen_for regex do | room, mood |
+        response = translate(room, nil, mood)
+        @debug and (puts "[Info - Lwrf] match_device: Matched! Sending command")
+        send_lwrf_command('mood', response['room'], response['mood'])
       end
+    end
   end
 
   def match_sequence
     @debug and (puts "[Info - Lwrf] match_sequence: Executing... ")
-    #loop the mood phrase in the config looking for a match
-      config['phrases']['sequence'].each do |phrase|
-        @debug and (puts "[Info - Lwrf] match_sequence: Phrase is: #{phrase['match']} ")
-        regex = "/" + phrase['match'] + "/i"
-        @debug and (puts "[Info - Lwrf] match_sequence: Checking regex: #{regex} ")
-        #look for a match
-        listen_for regex do | sequence |
-          @debug and (puts "[Info - Lwrf] match_sequence: Matched! Sending command")
-          send_lwrf_command('sequence', sequence)
-        end
+  #loop the mood phrase in the config looking for a match
+    config['phrases']['sequence'].each do |phrase|
+      @debug and (puts "[Info - Lwrf] match_sequence: Phrase is: #{phrase['match']} ")
+      regex = "/" + phrase['match'] + "/i"
+      @debug and (puts "[Info - Lwrf] match_sequence: Checking regex: #{regex} ")
+      #look for a match
+      listen_for regex do | sequence |
+        @debug and (puts "[Info - Lwrf] match_sequence: Matched! Sending command")
+        send_lwrf_command('sequence', sequence)
       end
+    end
   end
   
   def match_info
@@ -145,6 +145,8 @@ class SiriProxy::Plugin::LWRF < SiriProxy::Plugin
           send_lwrf_mood room object
         when 'sequence'
           send_lwrf_sequence object
+        else
+          @debug and (puts "[Info - Lwrf] send_lwrf_command: Did not recognise command type: " + type)
       end
     rescue Exception
       pp $!
@@ -181,10 +183,12 @@ class SiriProxy::Plugin::LWRF < SiriProxy::Plugin
   #no matches, so try other standard phrases
 
   #test that the plugin is alive
-  listen_for /test lightwave/i do
+  listen_for (/test lightwave/i) do
     say "Lightwave control is available!"
     request_completed
   end
+
+end
   
 #  
 #  #turn a device in a room on or off
@@ -253,4 +257,3 @@ class SiriProxy::Plugin::LWRF < SiriProxy::Plugin
 #    request_completed
 #  end
 #
-#end
