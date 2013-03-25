@@ -31,16 +31,21 @@ class SiriProxy::Plugin::LWRF < SiriProxy::Plugin
   def initialize(config)
     appname = "SiriProxy-LWRF-JM"
     
-    @debug = true
-    
     # load config file
     config_file = File.expand_path('~/.siriproxy/lwrf_config.yml')
     if (File::exists?( config_file ))
       @config = YAML.load_file(config_file)
     end
+    
+    # set debug if requested
+    if (@config.has_key?("debug"))
+      @debug = @config["debug"] == true
+    else
+      @debug = false
+    end    
         
     # set the default room
-    @active_room = @raw_config['default_room']
+    @active_room = @config['default_room']
 
     # instantiate the lwrf gem
     @debug and (p "Instantiating LightWaveRF Gem")

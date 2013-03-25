@@ -1,4 +1,5 @@
 ---
+debug: true
 default_room: living
 room_alias:
 	lounge:
