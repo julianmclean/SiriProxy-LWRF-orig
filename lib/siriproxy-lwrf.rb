@@ -20,6 +20,7 @@
 
 require 'cora'
 require 'siri_objects'
+require 'lightwaverf'
 
 #######
 # This is plugin to control LightwaveRF
@@ -28,207 +29,223 @@ require 'siri_objects'
 
 class SiriProxy::Plugin::LWRF < SiriProxy::Plugin
   def initialize(config)
-    appname = "SiriProxy-LWRF"
-
-    @roomlist = Hash["rooms" => Hash["lounge" => Hash["zone" => "living", "aliases" => Hash["living area", "living room", "family room"] ], "port" => port, "username" => username, "password" => password]]
-
-    rooms = File.expand_path('~/.siriproxy/lwrf_rooms.yml')
-    if (File::exists?( rooms ))
-      @roomlist = YAML.load_file(rooms)
-    end
-
-    @active_room = @roomlist.keys.first
-
-    @xbmc = XBMCLibrary.new(@roomlist, appname)
-  end
-
-  #show plugin status
-  listen_for /[xX] *[bB] *[mM] *[cC] *(.*)/i do |roomname|
-    roomname = roomname.downcase.strip
-    roomcount = @roomlist.keys.length
-
-    if (roomcount > 1 && roomname == "")
-      say "You have #{roomcount} rooms, here is their status:"
-
-      @roomlist.each { |name,room|
-        if (@xbmc.connect(name))
-          say "[#{name}] Online", spoken: "The #{name} is online"
-        else
-          say "[#{name}] Offline", spoken: "The #{name} is offline"
-        end
-      }
-    else
-      if (roomname == "")
-        roomname = @roomlist.keys.first
-      end
-      if (roomname != "" && roomname != nil && @roomlist.has_key?(roomname))
-        if (@xbmc.connect(roomname))
-          say "XBMC is online"
-        else 
-          say "XBMC is offline, please check the plugin configuration and check if XBMC is running"
-        end
-      else
-        say "There is no room defined called \"#{roomname}\""
-      end
-    end
-    request_completed #always complete your request! Otherwise the phone will "spin" at the user!
-  end
-
-  # stop playing
-  listen_for /^stop/i do 
-    if (@xbmc.connect(@active_room))
-      if @xbmc.stop()
-        say "I stopped the video player"
-      else
-        say "There is no video playing"
-      end
-    end
-    request_completed #always complete your request! Otherwise the phone will "spin" at the user!
-  end
-
-  # pause playing
-  listen_for /^pause/i do 
-    if (@xbmc.connect(@active_room))
-      if @xbmc.pause()
-        say "I paused the video player"
-      else
-        say "There is no video playing"
-      end
-    end
-    request_completed #always complete your request! Otherwise the phone will "spin" at the user!
-  end
-
-  # scan
-  listen_for /^scan/i do 
-    if (@xbmc.connect(@active_room))
-      if @xbmc.scan()
-        say "I'm scanning for new content"
-      else
-        say "There was a problem scanning for new content"
-      end
-    end
-    request_completed #always complete your request! Otherwise the phone will "spin" at the user!
-  end
-
-  # recently added movies
-  listen_for /recent.*movies/i do 
-    if (@xbmc.connect(@active_room))
-      data = @xbmc.get_recently_added_movies()
-      list = ""
-      data["movies"].each { |movie| list = list + movie["label"] + "\n" }
-      say list, spoken: "Here are your recently added movies"
-    end
-    request_completed #always complete your request! Otherwise the phone will "spin" at the user!
-  end
-
-  # recently added episodes
-  listen_for /recent.*tv/i do 
-    if (@xbmc.connect(@active_room))
-      data = @xbmc.get_recently_added_episodes()
-
-      shows = {}
-      tvdata = @xbmc.get_tv_shows()
-      tvdata["tvshows"].each do |show|
-        shows[show["tvshowid"]] = show["label"]
-      end
-
-      list = ""
-      data["episodes"].each do |episode|
-	episode_data = @xbmc.get_episode(episode["episodeid"])
-        list = list + shows[episode_data["episodedetails"]["tvshowid"]] + ": " + episode["label"] + "\n"
-      end
-      say list, spoken: "Here are your recently added TV episodes"
-    end
-    request_completed #always complete your request! Otherwise the phone will "spin" at the user!
-  end
-
-  # resume playing
-  listen_for /^resume|unpause|continue/i do 
-    if (@xbmc.connect(@active_room))
-      if @xbmc.pause()
-        say "I resumed the video player", spoken: "Resuming video"
-      else
-        say "There is no video playing"
-      end
-    end
-    request_completed #always complete your request! Otherwise the phone will "spin" at the user!
-  end
-
-  # set default room
-  # set default room
-  listen_for /(?:(?:[Ii]'m in)|(?:[Ii] am in)|(?:[Uu]se)|(?:[Cc]ontrol)) the (.*)/i do |roomname|
-    roomname = roomname.downcase.strip
-    if (roomname != "" && roomname != nil && @roomlist.has_key?(roomname))
-      @active_room = roomname
-      say "Noted.", spoken: "Commands will be sent to the \"#{roomname}\""
-    else
-      say "There is no room defined called \"#{roomname}\""
-    end
-    request_completed #always complete your request! Otherwise the phone will "spin" at the user!
-  end  
-
-  #play movie or episode
-  listen_for /play (.+?)(?: in the (.*))?$/i do |title,roomname|
-    if (roomname == "" || roomname == nil)
-      roomname = @active_room
-    else
-      roomname = roomname.downcase.strip
-    end
-
-    if (@xbmc.connect(roomname))
-      if @roomlist.has_key?(roomname)
-        @active_room = roomname
-      end
-
-      tvshow = @xbmc.find_show(title)
-      if (tvshow == "")
-        movie = @xbmc.find_movie(title)
-        if (movie == "")
-          say "Title not found, please try again"
-        else
-          say "Now playing \"#{movie["title"]}\"", spoken: "Now playing \"#{movie["title"]}\""
-          @xbmc.play(movie["file"])
-        end
-      else  
-        episode = @xbmc.find_first_unwatched_episode(tvshow["tvshowid"])
-        if (episode == "")
-          say "No unwatched episode found for the \"#{tvshow["label"]}\""
-        else    
-          say "Now playing \"#{episode["title"]}\" (#{episode["showtitle"]}, Season #{episode["season"]}, Episode #{episode["episode"]})", spoken: "Now playing \"#{episode["title"]}\""
-          @xbmc.play(episode["file"])
-        end
-      end
-    else 
-      say "The XBMC interface is unavailable, please check the plugin configuration or check if XBMC is running"
-    end
+    appname = "SiriProxy-LWRF-JM"
     
-    request_completed #always complete your request! Otherwise the phone will "spin" at the user!
-  end
-
-  # show_home_screen
-  listen_for /tv go home/i do 
-    if (@xbmc.connect(@active_room))
-      if @xbmc.show_home()
-        say "Showing the home screen...", spoken: "Here's your home screen"
-      else
-        say "Couldn't show the home screen"
-      end
+    @debug = true
+    
+    # load config file
+    config_file = File.expand_path('~/.siriproxy/lwrf_config.yml')
+    if (File::exists?( config_file ))
+      @config = YAML.load_file(config_file)
     end
-    request_completed #always complete your request! Otherwise the phone will "spin" at the user!
-  end
+        
+    # set the default room
+    @active_room = @raw_config['default_room']
 
-  # show_movies
-  #TODO
-  listen_for /tv go home/i do 
-    if (@xbmc.connect(@active_room))
-      if @xbmc.show_home()
-        say "Showing the home screen...", spoken: "Here's your home screen"
-      else
-        say "Couldn't show the home screen"
-      end
-    end
-    request_completed #always complete your request! Otherwise the phone will "spin" at the user!
+    # instantiate the lwrf gem
+    @debug and (p "Instantiating LightWaveRF Gem")
+    @lwrf = LightWaveRF.new rescue nil
   end
-
   
-end
+  def translate (roomalias, devicealias, moodalias)
+    @debug and (puts "[Info - Lwrf] translate_room_device: Executing... ")
+    #set defaults
+    response = []
+    response['room'] = roomalias
+    response['device'] = devicealias
+    response['mood'] = moodalias
+    #convert any aliases
+    unless config['room_alias'].nil?
+      if config['room_alias'].has_key(roomalias)
+        response['room'] = config['room_alias'][roomalias]['room']
+        @debug and (puts "[Info - Lwrf] translate_room_device: Translated room is: " + response['room'])
+        # translate devicealias if we have one
+        unless config['room_alias'][roomalias]['device_alias'].nil? or devicealias == nil
+          if config['room_alias'][roomalias]['device_alias'].has_key(devicealias)
+            response['device'] = config['room_alias'][roomalias]['device_alias'][devicealias]
+            @debug and (puts "[Info - Lwrf] translate_room_device: Translated device is: " + response['device'])
+          end      
+        end
+        # translate moodalias if we have one
+        unless config['room_alias'][roomalias]['device_alias'].nil? or devicealias == nil
+          if config['room_alias'][roomalias]['device_alias'].has_key(devicealias)
+            response['device'] = config['room_alias'][roomalias]['device_alias'][devicealias]
+            @debug and (puts "[Info - Lwrf] translate_room_device: Translated device is: " + response['device'])
+          end      
+        end
+      end
+    end
+    response
+  end
+  
+  def match_device
+    @debug and (puts "[Info - Lwrf] match_device: Executing... ")
+    #loop the devices phrase in the config looking for a match
+      config['phrases']['device'].each do |phrase|
+        @debug and (puts "[Info - Lwrf] match_device: Phrase is: #{phrase['match']} ")
+        regex = "/" + phrase['match'] + "/i"
+        @debug and (puts "[Info - Lwrf] match_device: Checking regex: #{regex} ")
+        #look for a match
+        listen_for regex do | action, device, room |
+          response = translate(room, device, nil)
+          @debug and (puts "[Info - Lwrf] match_device: Matched! Sending command")
+          send_lwrf_command('device', response['room'], response['device'], action)
+        end
+      end
+  end
+
+  def match_mood
+    @debug and (puts "[Info - Lwrf] match_mood: Executing... ")
+    #loop the mood phrase in the config looking for a match
+      config['phrases']['mood'].each do |phrase|
+        @debug and (puts "[Info - Lwrf] match_mood: Phrase is: #{phrase['match']} ")
+        regex = "/" + phrase['match'] + "/i"
+        @debug and (puts "[Info - Lwrf] match_mood: Checking regex: #{regex} ")
+        #look for a match
+        listen_for regex do | room, mood |
+          response = translate(room, nil, mood)
+          @debug and (puts "[Info - Lwrf] match_device: Matched! Sending command")
+          send_lwrf_command('mood', response['room'], response['mood'])
+        end
+      end
+  end
+
+  def match_sequence
+    @debug and (puts "[Info - Lwrf] match_sequence: Executing... ")
+    #loop the mood phrase in the config looking for a match
+      config['phrases']['sequence'].each do |phrase|
+        @debug and (puts "[Info - Lwrf] match_sequence: Phrase is: #{phrase['match']} ")
+        regex = "/" + phrase['match'] + "/i"
+        @debug and (puts "[Info - Lwrf] match_sequence: Checking regex: #{regex} ")
+        #look for a match
+        listen_for regex do | sequence |
+          @debug and (puts "[Info - Lwrf] match_sequence: Matched! Sending command")
+          send_lwrf_command('sequence', sequence)
+        end
+      end
+  end
+  
+  def match_info
+    @debug and (puts "[Info - Lwrf] match_info: Executing... ")
+  end
+
+  def send_lwrf_command (type, room, object, action)
+    @debug and (puts "[Info - Lwrf] send_lwrf_device: Starting with arguments: type => #{type}, room => #{room}, object => #{object}, action => #{action} ")
+    begin
+      # call the relevant command
+      case type
+        when 'device'
+          send_lwrf_device room object action
+        when 'mood'
+          send_lwrf_mood room object
+        when 'sequence'
+          send_lwrf_sequence object
+      end
+    rescue Exception
+      pp $!
+      say "Sorry, I encountered an error"
+      @debug and (puts "[Info - Lwrf] send_lwrf_command: Error => #{$!}" )
+    end
+    @debug and (puts "[Info - Lwrf] send_lwrf_command: Request Completed" )
+    request_completed
+  end
+    
+  #calls lwrf for a device
+  def send_lwrf_device (roomName, deviceName, action)  
+    @debug and (puts "[Info - Lwrf] send_lwrf_device: Starting with arguments: roomName => #{roomName}, deviceName => #{deviceName}, action => #{action} ")
+    @lwrf.send(roomName.downcase, deviceName.downcase, action, @debug)
+  end
+  
+  #calls lwrf for a mood
+  def send_lwrf_mood (roomName, moodName)
+    @debug and (puts "[Info - Lwrf] send_lwrf_mood: Starting with arguments: roomName => #{roomName}, moodName => #{moodName} ")
+    @lwrf.mood(roomName.downcase, moodName.downcase, @debug)
+  end
+  
+  #calls lwrf for a sequence
+  def send_lwrf_mood (sequenceName)
+    @debug and (puts "[Info - Lwrf] send_lwrf_sequence: Starting with arguments: sequenceName => #{sequenceName} ")
+    @lwrf.sequence(sequenceName.downcase, @debug)
+  end
+  
+  #main execution
+  match_device
+  match_mood
+  match_sequence
+
+  #no matches, so try other standard phrases
+
+  #test that the plugin is alive
+  listen_for /test lightwave/i do
+    say "Lightwave control is available!"
+    request_completed
+  end
+  
+#  
+#  #turn a device in a room on or off
+#  listen_for /(on|off)(?: the) (.*) in(?: the) (.*)/i do |state,devicealias,roomalias|
+#    if (match = find_zone_device roomalias devicealias)
+#      LightWaveRF.new.send match['zone'], match['device'], state, @debug
+#    else
+#      if (match = find_zone roomalias)
+#        say "I don't recognise a device called " + devicealias + " in the " + roomalias
+#      else
+#        say "I don't know of a device called " + devicealias + " in a room called " + roomalias
+#      end
+#    end
+#    request_completed
+#  end
+#
+#  #set a device in a room to a preset dim level
+#  listen_for /(.*) in(?: the) (.*) to (low|mid|high|full)/i do |devicealias,roomalias,preset|
+#    if (match = find_zone_device roomalias devicealias)      
+#      LightWaveRF.new.send match['zone'], match['device'], preset, @debug
+#    else
+#      if (match = find_zone roomalias)
+#        say "I don't recognise a device called " + devicealias + " in the " + roomalias
+#      else
+#        say "I don't know of a device called " + devicealias + " in a room called " + roomalias
+#      end
+#    end
+#    request_completed
+#  end
+#
+#  #set a device in a room to a specific dim level
+#  listen_for /(.*) in(?: the) (.*) to (.*) percent/i do |devicealias,roomalias,level|
+#    if (match = find_zone_device roomalias devicealias)
+#      LightWaveRF.new.send match['zone'], match['device'], level.to_i, @debug
+#    else
+#      if (match = find_zone roomalias)
+#        say "I don't recognise a device called " + devicealias + " in the " + roomalias
+#      else
+#        say "I don't know of a device called " + devicealias + " in a room called " + roomalias
+#      end
+#    end
+#    request_completed
+#  end
+#
+#  #set a mood in a room
+#  listen_for /(.*) mood in(?: the) (.*)/i do |moodalias,roomalias|
+#    if (match = find_zone_mood moodalias roomalias)
+#      LightWaveRF.new.mood match['zone'], match['mood'], @debug
+#    else
+#      if (match = find_zone roomalias)
+#        say "I don't recognise a mood called " + devicealias + " in the " + roomalias
+#      else
+#        say "I don't know of a mood called " + devicealias + " in a room called " + roomalias
+#      end      
+#    end
+#    request_completed
+#  end
+#
+#  #turn all the devices in a room off
+#  listen_for /all the(?: .*) off in(?: the) (.*)/i do |roomalias|
+#    if (match = find_zone roomalias)
+#      LightWaveRF.new.mood match, "alloff", @debug
+#    else
+#      say "I don't know of a room called " + roomalias
+#    end
+#    request_completed
+#  end
+#
+#end
