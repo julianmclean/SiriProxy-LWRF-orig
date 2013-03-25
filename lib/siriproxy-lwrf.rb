@@ -30,6 +30,9 @@ require 'lightwaverf'
 
 class SiriProxy::Plugin::Lwrf < SiriProxy::Plugin
   
+  @room_config = nil
+  @debug = false
+  
   def initialize(config)
     appname = "SiriProxy-LWRF-JM"
     
@@ -45,15 +48,15 @@ class SiriProxy::Plugin::Lwrf < SiriProxy::Plugin
     # load config file
     config_file = File.expand_path('~/.siriproxy/lwrf_config.yml')
     if (File::exists?( config_file ))
-      @config = YAML.load_file(config_file)
+      @room_config = YAML.load_file(config_file)
     end
 
-    @debug and (puts "[Info - Lwrf] initialize: Configuration is: #{@config}" )
+    @debug and (puts "[Info - Lwrf] initialize: Configuration is: #{@room_config}" )
             
     # set the default room
-    @active_room = @config['default_room']
+    @default_room = @room_config['default_room']
     
-    @debug and (puts "[Info - Lwrf] initialize: Default room is: #{@active_room}" )    
+    @debug and (puts "[Info - Lwrf] initialize: Default room is: #{@default_room}" )
 
     # instantiate the lwrf gem
     @debug and (p "Instantiating LightWaveRF Gem")
@@ -96,7 +99,7 @@ class SiriProxy::Plugin::Lwrf < SiriProxy::Plugin
   #def match_device
   #  @debug and (puts "[Info - Lwrf] match_device: Executing... ")
   #  #loop the devices phrase in the config looking for a match
-  #  @config['phrases']['device'].each do |phrase|
+  #  @room_config['phrases']['device'].each do |phrase|
   #    @debug and (puts "[Info - Lwrf] match_device: Phrase is: #{phrase['match']} ")
   #    regex = "/" + phrase['match'] + "/i"
   #    @debug and (puts "[Info - Lwrf] match_device: Checking regex: #{regex} ")
@@ -112,7 +115,7 @@ class SiriProxy::Plugin::Lwrf < SiriProxy::Plugin
   #def match_mood
   #  @debug and (puts "[Info - Lwrf] match_mood: Executing... ")
   #  #loop the mood phrase in the config looking for a match
-  #  @config['phrases']['mood'].each do |phrase|
+  #  @room_config['phrases']['mood'].each do |phrase|
   #    @debug and (puts "[Info - Lwrf] match_mood: Phrase is: #{phrase['match']} ")
   #    regex = "/" + phrase['match'] + "/i"
   #    @debug and (puts "[Info - Lwrf] match_mood: Checking regex: #{regex} ")
@@ -128,7 +131,7 @@ class SiriProxy::Plugin::Lwrf < SiriProxy::Plugin
   #def match_sequence
   #  @debug and (puts "[Info - Lwrf] match_sequence: Executing... ")
   ##loop the mood phrase in the config looking for a match
-  #  @config['phrases']['sequence'].each do |phrase|
+  #  @room_config['phrases']['sequence'].each do |phrase|
   #    @debug and (puts "[Info - Lwrf] match_sequence: Phrase is: #{phrase['match']} ")
   #    regex = "/" + phrase['match'] + "/i"
   #    @debug and (puts "[Info - Lwrf] match_sequence: Checking regex: #{regex} ")
@@ -186,8 +189,10 @@ class SiriProxy::Plugin::Lwrf < SiriProxy::Plugin
   end
   
   #main execution
+  
+  puts "[Info - Lwrf] initialize: Configuration is now: #{@room_config}"
 
-  @config['phrases']['device'].each do |phrase|
+  @room_config['phrases']['device'].each do |phrase|
     @debug and (puts "[Info - Lwrf] match_device: Phrase is: #{phrase['match']} ")
     regex = "/" + phrase['match'] + "/i"
     @debug and (puts "[Info - Lwrf] match_device: Checking regex: #{regex} ")
@@ -199,7 +204,7 @@ class SiriProxy::Plugin::Lwrf < SiriProxy::Plugin
     end
   end
 
-  @config['phrases']['mood'].each do |phrase|
+  @room_config['phrases']['mood'].each do |phrase|
     @debug and (puts "[Info - Lwrf] match_mood: Phrase is: #{phrase['match']} ")
     regex = "/" + phrase['match'] + "/i"
     @debug and (puts "[Info - Lwrf] match_mood: Checking regex: #{regex} ")
@@ -211,7 +216,7 @@ class SiriProxy::Plugin::Lwrf < SiriProxy::Plugin
     end
   end
 
-  @config['phrases']['sequence'].each do |phrase|
+  @room_config['phrases']['sequence'].each do |phrase|
     @debug and (puts "[Info - Lwrf] match_sequence: Phrase is: #{phrase['match']} ")
     regex = "/" + phrase['match'] + "/i"
     @debug and (puts "[Info - Lwrf] match_sequence: Checking regex: #{regex} ")
