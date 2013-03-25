@@ -20,6 +20,7 @@
 
 require 'cora'
 require 'siri_objects'
+require 'pp'
 require 'lightwaverf'
 
 #######
@@ -27,29 +28,38 @@ require 'lightwaverf'
 # It is a Siri wrapper for on LightwaveRF control via Pauly's ruby gem
 ######
 
-class SiriProxy::Plugin::LWRF < SiriProxy::Plugin
+class SiriProxy::Plugin::Lwrf < SiriProxy::Plugin
+  
   def initialize(config)
     appname = "SiriProxy-LWRF-JM"
     
+  # set debug if requested
+    if (config.has_key?("debug"))
+      @debug = config["debug"] == true
+    else
+      @debug = false
+    end    
+        
+    @debug and (puts "[Info - Lwrf] initialize: Debug is on!")
+
     # load config file
     config_file = File.expand_path('~/.siriproxy/lwrf_config.yml')
     if (File::exists?( config_file ))
       @config = YAML.load_file(config_file)
     end
-    
-    # set debug if requested
-    if (@config.has_key?("debug"))
-      @debug = @config["debug"] == true
-    else
-      @debug = false
-    end    
-        
+
+    @debug and (puts "[Info - Lwrf] initialize: Configuration is: #{@config}" )
+            
     # set the default room
     @active_room = @config['default_room']
+    
+    @debug and (puts "[Info - Lwrf] initialize: Default room is: #{@active_room}" )    
 
     # instantiate the lwrf gem
     @debug and (p "Instantiating LightWaveRF Gem")
     @lwrf = LightWaveRF.new rescue nil
+
+    @debug and (p "[Info - Lwrf] initialize: Complete")
   end
   
   def translate (roomalias, devicealias, moodalias)
@@ -83,56 +93,56 @@ class SiriProxy::Plugin::LWRF < SiriProxy::Plugin
     response
   end
   
-  def match_device
-    @debug and (puts "[Info - Lwrf] match_device: Executing... ")
-    #loop the devices phrase in the config looking for a match
-    config['phrases']['device'].each do |phrase|
-      @debug and (puts "[Info - Lwrf] match_device: Phrase is: #{phrase['match']} ")
-      regex = "/" + phrase['match'] + "/i"
-      @debug and (puts "[Info - Lwrf] match_device: Checking regex: #{regex} ")
-      #look for a match
-      listen_for regex do | action, device, room |
-        response = translate(room, device, nil)
-        @debug and (puts "[Info - Lwrf] match_device: Matched! Sending command")
-        send_lwrf_command('device', response['room'], response['device'], action)
-      end
-    end
-  end
-
-  def match_mood
-    @debug and (puts "[Info - Lwrf] match_mood: Executing... ")
-    #loop the mood phrase in the config looking for a match
-    config['phrases']['mood'].each do |phrase|
-      @debug and (puts "[Info - Lwrf] match_mood: Phrase is: #{phrase['match']} ")
-      regex = "/" + phrase['match'] + "/i"
-      @debug and (puts "[Info - Lwrf] match_mood: Checking regex: #{regex} ")
-      #look for a match
-      listen_for regex do | room, mood |
-        response = translate(room, nil, mood)
-        @debug and (puts "[Info - Lwrf] match_device: Matched! Sending command")
-        send_lwrf_command('mood', response['room'], response['mood'])
-      end
-    end
-  end
-
-  def match_sequence
-    @debug and (puts "[Info - Lwrf] match_sequence: Executing... ")
-  #loop the mood phrase in the config looking for a match
-    config['phrases']['sequence'].each do |phrase|
-      @debug and (puts "[Info - Lwrf] match_sequence: Phrase is: #{phrase['match']} ")
-      regex = "/" + phrase['match'] + "/i"
-      @debug and (puts "[Info - Lwrf] match_sequence: Checking regex: #{regex} ")
-      #look for a match
-      listen_for regex do | sequence |
-        @debug and (puts "[Info - Lwrf] match_sequence: Matched! Sending command")
-        send_lwrf_command('sequence', sequence)
-      end
-    end
-  end
-  
-  def match_info
-    @debug and (puts "[Info - Lwrf] match_info: Executing... ")
-  end
+  #def match_device
+  #  @debug and (puts "[Info - Lwrf] match_device: Executing... ")
+  #  #loop the devices phrase in the config looking for a match
+  #  @config['phrases']['device'].each do |phrase|
+  #    @debug and (puts "[Info - Lwrf] match_device: Phrase is: #{phrase['match']} ")
+  #    regex = "/" + phrase['match'] + "/i"
+  #    @debug and (puts "[Info - Lwrf] match_device: Checking regex: #{regex} ")
+  #    #look for a match
+  #    listen_for regex do | action, device, room |
+  #      response = translate(room, device, nil)
+  #      @debug and (puts "[Info - Lwrf] match_device: Matched! Sending command")
+  #      send_lwrf_command('device', response['room'], response['device'], action)
+  #    end
+  #  end
+  #end
+  #
+  #def match_mood
+  #  @debug and (puts "[Info - Lwrf] match_mood: Executing... ")
+  #  #loop the mood phrase in the config looking for a match
+  #  @config['phrases']['mood'].each do |phrase|
+  #    @debug and (puts "[Info - Lwrf] match_mood: Phrase is: #{phrase['match']} ")
+  #    regex = "/" + phrase['match'] + "/i"
+  #    @debug and (puts "[Info - Lwrf] match_mood: Checking regex: #{regex} ")
+  #    #look for a match
+  #    listen_for regex do | room, mood |
+  #      response = translate(room, nil, mood)
+  #      @debug and (puts "[Info - Lwrf] match_device: Matched! Sending command")
+  #      send_lwrf_command('mood', response['room'], response['mood'])
+  #    end
+  #  end
+  #end
+  #
+  #def match_sequence
+  #  @debug and (puts "[Info - Lwrf] match_sequence: Executing... ")
+  ##loop the mood phrase in the config looking for a match
+  #  @config['phrases']['sequence'].each do |phrase|
+  #    @debug and (puts "[Info - Lwrf] match_sequence: Phrase is: #{phrase['match']} ")
+  #    regex = "/" + phrase['match'] + "/i"
+  #    @debug and (puts "[Info - Lwrf] match_sequence: Checking regex: #{regex} ")
+  #    #look for a match
+  #    listen_for regex do | sequence |
+  #      @debug and (puts "[Info - Lwrf] match_sequence: Matched! Sending command")
+  #      send_lwrf_command('sequence', sequence)
+  #    end
+  #  end
+  #end
+  #
+  #def match_info
+  #  @debug and (puts "[Info - Lwrf] match_info: Executing... ")
+  #end
 
   def send_lwrf_command (type, room, object, action)
     @debug and (puts "[Info - Lwrf] send_lwrf_device: Starting with arguments: type => #{type}, room => #{room}, object => #{object}, action => #{action} ")
@@ -176,9 +186,41 @@ class SiriProxy::Plugin::LWRF < SiriProxy::Plugin
   end
   
   #main execution
-  match_device
-  match_mood
-  match_sequence
+
+  @config['phrases']['device'].each do |phrase|
+    @debug and (puts "[Info - Lwrf] match_device: Phrase is: #{phrase['match']} ")
+    regex = "/" + phrase['match'] + "/i"
+    @debug and (puts "[Info - Lwrf] match_device: Checking regex: #{regex} ")
+    #look for a match
+    listen_for regex do | action, device, room |
+      response = translate(room, device, nil)
+      @debug and (puts "[Info - Lwrf] match_device: Matched! Sending command")
+      send_lwrf_command('device', response['room'], response['device'], action)
+    end
+  end
+
+  @config['phrases']['mood'].each do |phrase|
+    @debug and (puts "[Info - Lwrf] match_mood: Phrase is: #{phrase['match']} ")
+    regex = "/" + phrase['match'] + "/i"
+    @debug and (puts "[Info - Lwrf] match_mood: Checking regex: #{regex} ")
+    #look for a match
+    listen_for regex do | room, mood |
+      response = translate(room, nil, mood)
+      @debug and (puts "[Info - Lwrf] match_device: Matched! Sending command")
+      send_lwrf_command('mood', response['room'], response['mood'])
+    end
+  end
+
+  @config['phrases']['sequence'].each do |phrase|
+    @debug and (puts "[Info - Lwrf] match_sequence: Phrase is: #{phrase['match']} ")
+    regex = "/" + phrase['match'] + "/i"
+    @debug and (puts "[Info - Lwrf] match_sequence: Checking regex: #{regex} ")
+    #look for a match
+    listen_for regex do | sequence |
+      @debug and (puts "[Info - Lwrf] match_sequence: Matched! Sending command")
+      send_lwrf_command('sequence', sequence)
+    end
+  end
 
   #no matches, so try other standard phrases
 
@@ -193,7 +235,7 @@ end
 #  
 #  #turn a device in a room on or off
 #  listen_for /(on|off)(?: the) (.*) in(?: the) (.*)/i do |state,devicealias,roomalias|
-#    if (match = find_zone_device roomalias devicealias)
+  #    if (match = find_zone_device roomalias devicealias)
 #      LightWaveRF.new.send match['zone'], match['device'], state, @debug
 #    else
 #      if (match = find_zone roomalias)

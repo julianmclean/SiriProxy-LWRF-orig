@@ -2,37 +2,37 @@
 debug: true
 default_room: living
 room_alias:
-	lounge:
-		room: living
-		device_alias:
-			light: lounge
-			main light: lounge
-		mood_alias:
-			tv: movie
-			kitchen: cook
-			eat: dinner
-	living room:
-		room: living
-		device_alias:
-			light: lounge
-	kitchen:
-		room: living
-		device_alias:
-			main light: kitchen
-			light: kitchen
-			spotlights: worktop
-			downlights: worktop
-	dining:
-		room: living
-		device_alias:
-			light: dining
-			chimney: fireplace
-			hearth: fireplace
+  lounge:
+    room: living
+    device_alias:
+      light: lounge
+      main light: lounge
+    mood_alias:
+      tv: movie
+      kitchen: cook
+      eat: dinner
+  living room:
+    room: living
+    device_alias:
+      light: lounge
+  kitchen:
+    room: living
+    device_alias:
+      main light: kitchen
+      light: kitchen
+      spotlights: worktop
+      downlights: worktop
+  dining:
+    room: living
+    device_alias:
+      light: dining
+      chimney: fireplace
+      hearth: fireplace
 phrases:
-	device:
-		-	match: '(?:.*) (on|off)(?: the) (.*) in(?: the) (.*)'
-	mood:
-		-	match: '(?:.*)(?: the) (.*) mood in(?: the) (.*)'
-	sequence:
-		-	match: '(?:.*)(?: the) (.*) sequence'
-		
+  device:
+    -  match: '(?:.*) (on|off)(?: the) (.*) in(?: the) (.*)'
+  mood:
+    -  match: '(?:.*)(?: the) (.*) mood in(?: the) (.*)'
+  sequence:
+    -  match: '(?:.*)(?: the) (.*) sequence'
+    
